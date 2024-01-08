@@ -2,59 +2,56 @@ pipeline {
     agent any
 
     environment {
-        // Initialisation de variables globales
-        NODE_VERSION = '14'
-        APP_NAME = 'ems-frontend'
-        DOCKER_REGISTRY = 'docker.io'
-        DOCKER_IMAGE_NAME = "imgfront"
-        DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
+        rname = "ems-front"
+        rurl = 'helagr'
+        imagename = "imgfront"
+        dockerhubCredentials = '289f660f-5b7b-468c-afbb-6af55408678d'  // Replace with your Docker Hub credentials ID
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Build Image') {
+        stage('build') {
             steps {
                 script {
-                    // Construire l'image Docker
-                    docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}", "-f Dockerfile .")
-                }
-            }
-        }
-
-        stage('Testing') {
-            steps {
-                script {
-                    // Ajoutez vos commandes de test ici
-                    // Exemple générique
                     sh 'npm install'
-                    sh 'npm test'
                 }
             }
         }
-
-        stage('Push to DockerHub') {
+     
+        stage('test') {
             steps {
                 script {
-                    // Poussez l'image vers DockerHub
-                    docker.withRegistry("${DOCKER_REGISTRY}", 'dockerHubCredentials') {
-                        docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}").push()
-                    }
+                    echo 'testing'
                 }
             }
         }
-    }
 
-    post {
-        always {
-            // Nettoyer les ressources temporaires
-            cleanWs()
+        stage('build image') {
+            steps {
+                script {
+                    def imageName = "${rurl}/${imagename}:latest"
+                   
+                    sh "docker build -t ${imageName} ."
+                   
+                    // Use Docker Hub credentials to log in
+                    withCredentials([usernamePassword(credentialsId: dockerhubCredentials, passwordVariable: 'DOCKERHUB_PASSWORD', usernameVariable: 'DOCKERHUB_USERNAME')]) {
+                        sh "docker login -u ${env.DOCKERHUB_USERNAME} -p ${env.DOCKERHUB_PASSWORD}"
+                    }
+                   
+                    sh "docker push ${imageName}"
+                }
+            }
+        }
+      stage('cleanup') {
+            steps {
+                script {
+                    def imageName = "${rurl}/${imagename}:latest"
+                   
+                 
+                   
+                    sh "docker image rmi ${imageName}"
+                      sh "docker logout"
+                }
+            }
         }
     }
 }
-
-         
