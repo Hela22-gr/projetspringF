@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    environment {
+        // Initialisation de variables globales
+        NODE_VERSION = '14'
+        APP_NAME = 'ems-frontend'
+        DOCKER_REGISTRY = 'docker.io'
+        DOCKER_IMAGE_NAME = "imgfront"
+        DOCKER_IMAGE_TAG = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                script {
+                    // Construire l'image Docker
+                    docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}", "-f Dockerfile .")
+                }
+            }
+        }
+
+        stage('Testing') {
+            steps {
+                script {
+                    // Ajoutez vos commandes de test ici
+                    // Exemple générique
+                    sh 'npm install'
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                script {
+                    // Poussez l'image vers DockerHub
+                    docker.withRegistry("${DOCKER_REGISTRY}", 'dockerHubCredentials') {
+                        docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}").push()
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Nettoyer les ressources temporaires
+            cleanWs()
+        }
+    }
+}
+
+         
